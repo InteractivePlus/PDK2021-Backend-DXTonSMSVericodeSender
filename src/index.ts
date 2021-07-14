@@ -1,8 +1,12 @@
-import { PDKAbstractDataTypes } from "@interactiveplus/pdk2021-common";
 import { CommunicationSenderInterface } from "@interactiveplus/pdk2021-backendcore/dist/AbstractFactoryTypes/Communication/CommunicationSender/CommunicationInterface";
 
 import axios, {AxiosResponse} from 'axios';
 import {locales} from 'i18n-codes-js';
+import { PhoneNumber, UserEntity } from "@interactiveplus/pdk2021-common/dist/AbstractDataTypes/User/UserEntity";
+import { PDKSenderServiceError } from '@interactiveplus/pdk2021-common/dist/AbstractDataTypes/Error/PDKException';
+import { VerificationCodeEntity } from "@interactiveplus/pdk2021-common/dist/AbstractDataTypes/Communication/VerificationCode/VerificationCodeEntity";
+import { APPEntity } from "@interactiveplus/pdk2021-common/dist/AbstractDataTypes/RegisteredAPP/APPEntity";
+import { MaskIDEntity } from "@interactiveplus/pdk2021-common/dist/AbstractDataTypes/MaskID/MaskIDEntity";
 
 /**
  * 短信通短信发送接口
@@ -13,7 +17,7 @@ type DXTonAcceptedEncoding = 'gbk' | 'utf8';
 
 export type {DXTonAcceptedEncoding};
 
-class DXTonSMSVericodeSender implements CommunicationSenderInterface<PDKAbstractDataTypes.PhoneNumber>{
+class DXTonSMSVericodeSender implements CommunicationSenderInterface<PhoneNumber>{
     encoding : DXTonAcceptedEncoding;
     account : string;
     apiSecret : string;
@@ -24,7 +28,7 @@ class DXTonSMSVericodeSender implements CommunicationSenderInterface<PDKAbstract
         this.apiSecret = apiSecret;
         this.allowIntlPhoneNum = allowIntlPhoneNum;
     }
-    canSendTo(address : PDKAbstractDataTypes.PhoneNumber) : boolean{
+    canSendTo(address : PhoneNumber) : boolean{
         if(this.allowIntlPhoneNum){
             return true;
         }else{
@@ -32,7 +36,7 @@ class DXTonSMSVericodeSender implements CommunicationSenderInterface<PDKAbstract
         }
     }
     sendContent = undefined;
-    async sendMsg(address : PDKAbstractDataTypes.PhoneNumber, content : string) : Promise<void>{
+    async sendMsg(address : PhoneNumber, content : string) : Promise<void>{
         let targetURL : string = '';
         let targetPhone : string = '';
         if(address.countryCallingCode === '86'){
@@ -51,11 +55,11 @@ class DXTonSMSVericodeSender implements CommunicationSenderInterface<PDKAbstract
             postResponse = await axios.post(targetURL, postData);
         }catch(err){
             if(err instanceof Error){
-                throw new PDKAbstractDataTypes.PDKSenderServiceError('DXTONAPIFailed: ' + err.message);
+                throw new PDKSenderServiceError('DXTONAPIFailed: ' + err.message);
             }
         }
         if(postResponse === undefined || postResponse.data === undefined || postResponse.data === null || postResponse.data === ''){
-            throw new PDKAbstractDataTypes.PDKSenderServiceError('DXTonAPIFailed: empty response');
+            throw new PDKSenderServiceError('DXTonAPIFailed: empty response');
         }
         /**
          * 状态码		说明
@@ -75,12 +79,12 @@ class DXTonSMSVericodeSender implements CommunicationSenderInterface<PDKAbstract
         if(postResponse.data === 100 || postResponse.data === '100'){
             return;
         }else{
-            throw new PDKAbstractDataTypes.PDKSenderServiceError('DXTONAPIFailed: Status ' + postResponse.data);
+            throw new PDKSenderServiceError('DXTONAPIFailed: Status ' + postResponse.data);
         }
     }
-    async sendVeriCode(address : PDKAbstractDataTypes.PhoneNumber, veriCode : PDKAbstractDataTypes.VerificationCodeEntity<any>, relatedUser?: PDKAbstractDataTypes.UserEntity, relatedAPP?: PDKAbstractDataTypes.APPEntity, relatedMaskID?: PDKAbstractDataTypes.MaskIDEntity, locale?: locales.LocaleCode) : Promise<void>{
+    async sendVeriCode(address : PhoneNumber, veriCode : VerificationCodeEntity<any>, relatedUser?: UserEntity, relatedAPP?: APPEntity, relatedMaskID?: MaskIDEntity, locale?: locales.LocaleCode) : Promise<void>{
         if(!this.canSendTo(address)){
-            throw new PDKAbstractDataTypes.PDKSenderServiceError('Cannot send to this address!');
+            throw new PDKSenderServiceError('Cannot send to this address!');
         }
         await this.sendMsg(address,this.getContentFor(
             veriCode,
@@ -90,7 +94,7 @@ class DXTonSMSVericodeSender implements CommunicationSenderInterface<PDKAbstract
             locale
         ));
     }
-    getContentFor(veriCode : PDKAbstractDataTypes.VerificationCodeEntity<any>,relatedUser?: PDKAbstractDataTypes.UserEntity, relatedAPP?: PDKAbstractDataTypes.APPEntity, relatedMaskID?: PDKAbstractDataTypes.MaskIDEntity, locale?: locales.LocaleCode) : string{
+    getContentFor(veriCode : VerificationCodeEntity<any>,relatedUser?: UserEntity, relatedAPP?: APPEntity, relatedMaskID?: MaskIDEntity, locale?: locales.LocaleCode) : string{
         return "您的验证码是：" + veriCode.veriCodeID + "。请不要把验证码泄露给其他人。如非本人操作，可不用理会！";
     }
 }
